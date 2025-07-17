@@ -47,6 +47,7 @@ def get_user_info(headers, livename, stop_event=None):
     global userinfo, token
     while True:
         if stop_event and stop_event.is_set():
+            fprint(f'Stopping user info thread for {livename}')
             break
         response = requests.get(f'https://api.twitch.tv/helix/users?login={livename}', headers=headers)
         if response.status_code in [200, 201]:
