@@ -3,7 +3,7 @@ from rich import print as fprint
 from discord_webhook import DiscordWebhook
 import discord
 from discord.ext import commands
-from threading import Thread, Event
+from threading import Thread, Event, enumerate
 from time import sleep
 import os
 from dotenv import load_dotenv
@@ -26,7 +26,7 @@ user_stop_events = {}
 live_status = {k: False for k in users}
 
 # discord bot logic ---
-bot = commands.Bot(command_prefix='@grok ',intents=discord.Intents.all())
+bot = commands.Bot(command_prefix='@',intents=discord.Intents.all())
 
 @bot.event
 async def on_ready():
@@ -131,12 +131,13 @@ async def adduser(ctx, username):
         'Authorization': f'Bearer {get_token()}',
         'Client-Id': client_id,
     }
-    t1 = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
-    t2 = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
-    t1.start()
-    t2.start()
+    userinfo_thread = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
+    checklive_thread = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
+    userinfo_thread.start()
+    checklive_thread.start()
     user_threads[username] = [t1, t2]
     await ctx.send(f'{username} added')
+    print('User added:', username)
 
 @bot.command()
 async def removeuser(ctx, username):
@@ -144,14 +145,34 @@ async def removeuser(ctx, username):
         # Signal threads to stop
         if username in user_stop_events:
             user_stop_events[username].set()
+
         del users[username]
+
         if username in live_status:
             del live_status[username]
+
         with open('users.txt','w') as q:
             q.write(str(users))
+
         await ctx.send(f'{username} removed')
     else:
         await ctx.send(f'{username} not found')
+
+@bot.command()
+async def listusers(ctx):
+    price = ''
+    for x in enumerate():
+        if '-checklive' in x.name:
+            username = x.name.removesuffix("-checklive")
+            price += f'{username}: {"Live :red_circle:" if live_status[username] == True else "Offline"}\n'
+        
+    embed = discord.Embed(title="Users being Checked:")
+    embed.description = price if price else "No users being checked."
+    embed.color = discord.Color.from_str("#884dc6")
+
+    embed.set_author(name="Twitch Check Bot")
+    await ctx.send(embed=embed)
+    #await ctx.send(f'Users:\n{price}')
 
 if __name__ == "__main__":
     token = get_token()
