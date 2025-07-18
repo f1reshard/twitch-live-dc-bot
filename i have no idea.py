@@ -93,6 +93,11 @@ def check_live(headers, livename, stop_event=None):
     global live_status
     while True:
         if stop_event and stop_event.is_set():
+            webhook = DiscordWebhook(
+            url=os.getenv('webhook_url'),
+            content='Stopping live check thread for ' + livename
+            )
+            webhook.execute()
             break
 
         response = get_live_info(headers, livename)
