@@ -72,7 +72,7 @@ def get_live_info(headers, livename):
     elif response.status_code == 401:
         token = get_token()
         headers['Authorization'] = f'Bearer {token}'
-        get_live_info(headers, livename)
+        return get_live_info(headers, livename)
     else:
         fprint(f'Error {response.status_code}')
         return None
