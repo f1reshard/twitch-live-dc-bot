@@ -78,6 +78,9 @@ def get_live_info(headers, livename):
         return None
 
 def send_discord_embed(livename, islive):
+    while livename not in userinfo:
+        fprint(f"Waiting for user info for {livename}...")
+        sleep(1)
     if islive:
         content = f"<@267440142124449794> {userinfo[livename]['display_name']} is [live!](https://twitch.tv/{livename})"
     else:
