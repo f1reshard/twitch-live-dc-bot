@@ -91,35 +91,38 @@ def send_discord_embed(livename, islive):
 
 def check_live(headers, livename, stop_event=None):
     global live_status
-    while True:
-        if stop_event and stop_event.is_set():
-            webhook = DiscordWebhook(
-            url=os.getenv('webhook_url'),
-            content='Stopping live check thread for ' + livename
-            )
-            webhook.execute()
-            break
+    try:
+        while True:
+            if stop_event and stop_event.is_set():
+                webhook = DiscordWebhook(
+                    url=os.getenv('webhook_url'),
+                    content='Stopping live check thread for ' + livename
+                )
+                webhook.execute()
+                break
 
-        response = get_live_info(headers, livename)
-        is_live = False
+            response = get_live_info(headers, livename)
+            is_live = False
 
-        if response and response.json()['data']:
-            if response.json()['data'][0]['type'] == 'live':
-                is_live = True
+            if response and response.json()['data']:
+                if response.json()['data'][0]['type'] == 'live':
+                    is_live = True
 
-        if is_live:
-            fprint(f"{livename} is live")
-            if livename not in live_status or not live_status[livename]:            
-                send_discord_embed(livename, True)
+            if is_live:
+                fprint(f"{livename} is live")
+                if livename not in live_status or not live_status[livename]:            
+                    send_discord_embed(livename, True)
 
-        else:
-            fprint(f"{livename} is offline")
-            if livename in live_status and live_status[livename]:
-                send_discord_embed(livename, False)
+            else:
+                fprint(f"{livename} is offline")
+                if livename in live_status and live_status[livename]:
+                    send_discord_embed(livename, False)
 
-        live_status[livename] = is_live
-        if not debug:
-            sleep(5)
+            live_status[livename] = is_live
+            if not debug:
+                sleep(5)
+    except Exception as e:
+        fprint(f"[red]check_live thread for {livename} crashed: {e}")
 
 @bot.command()
 async def adduser(ctx, username):
@@ -196,5 +199,5 @@ if __name__ == "__main__":
         t2.start()
         user_threads[x] = [t1, t2]
         live_status[x] = False
-
-    bot.run(token=dcbot_token)
+    if not debug:
+        bot.run(token=dcbot_token)
