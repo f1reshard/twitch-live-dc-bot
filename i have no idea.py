@@ -49,6 +49,7 @@ def get_user_info(headers, livename, stop_event=None):
         if stop_event and stop_event.is_set():
             fprint(f'Stopping user info thread for {livename}')
             break
+    
         response = requests.get(f'https://api.twitch.tv/helix/users?login={livename}', headers=headers)
         if response.status_code in [200, 201]:
             userinfo[livename] = response.json()['data'][0]
@@ -58,7 +59,7 @@ def get_user_info(headers, livename, stop_event=None):
         elif response.status_code == 401:
             token = get_token()
             headers['Authorization'] = f'Bearer {token}'
-            get_user_info(headers, livename, stop_event)
+            continue
         else:
             fprint(f'Error {response.status_code}')
 
