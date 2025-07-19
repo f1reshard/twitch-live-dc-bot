@@ -8,6 +8,7 @@ from time import sleep
 import os
 from dotenv import load_dotenv
 from ast import literal_eval
+import threading
 
 load_dotenv(dotenv_path='twitch_clients.env')
 debug = False
@@ -186,6 +187,39 @@ async def listusers(ctx):
     embed.set_author(name="Twitch Check Bot")
     await ctx.send(embed=embed)
     #await ctx.send(f'Users:\n{price}')
+
+def thread_monitor():
+    while True:
+        sleep(10)
+        for username in list(users.keys()):
+            # Check if threads exist and are alive
+            threads = user_threads.get(username, [])
+            need_restart = False
+            if len(threads) != 2:
+                need_restart = True
+            else:
+                for t in threads:
+                    if not t.is_alive():
+                        need_restart = True
+                        break
+            if need_restart:
+                fprint(f"[yellow]Restarting threads for {username}")
+                stop_event = user_stop_events.get(username) or Event()
+                user_stop_events[username] = stop_event
+                headers = {
+                    'Authorization': f'Bearer {get_token()}',
+                    'Client-Id': client_id,
+                }
+                t1 = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
+                t2 = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
+                t1.start()
+                t2.start()
+                user_threads[username] = [t1, t2]
+         # Check every 10 seconds
+
+# Start the monitor thread
+monitor_thread = threading.Thread(target=thread_monitor, name="ThreadMonitor", daemon=True)
+monitor_thread.start()
 
 if __name__ == "__main__":
     token = get_token()
