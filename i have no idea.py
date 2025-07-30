@@ -26,6 +26,9 @@ user_stop_events = {}
 # Track live status in memory only
 live_status = {k: False for k in users}
 
+# Add a lock for thread-safe operations
+thread_lock = threading.Lock()
+
 # discord bot logic ---
 bot = commands.Bot(command_prefix='@',intents=discord.Intents.all())
 
@@ -131,46 +134,52 @@ def check_live(headers, livename, stop_event=None):
 
 @bot.command()
 async def adduser(ctx, username):
-    if username in users:
-        await ctx.send(f'{username} already exists')
-        return
-    users[username] = False
-    live_status[username] = False
-    with open('users.txt','w') as q:
-        q.write(str(users))
-    # Create stop event and threads for new user
-    stop_event = Event()
-    user_stop_events[username] = stop_event
-    headers = {
-        'Authorization': f'Bearer {get_token()}',
-        'Client-Id': client_id,
-    }
-    userinfo_thread = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
-    checklive_thread = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
-    userinfo_thread.start()
-    checklive_thread.start()
-    user_threads[username] = [t1, t2]
+    with thread_lock:
+        if username in users:
+            await ctx.send(f'{username} already exists')
+            return
+        users[username] = False
+        live_status[username] = False
+        with open('users.txt','w') as q:
+            q.write(str(users))
+        # Create stop event and threads for new user
+        stop_event = Event()
+        user_stop_events[username] = stop_event
+        headers = {
+            'Authorization': f'Bearer {get_token()}',
+            'Client-Id': client_id,
+        }
+        userinfo_thread = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
+        checklive_thread = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
+        userinfo_thread.start()
+        checklive_thread.start()
+        user_threads[username] = [userinfo_thread, checklive_thread]
     await ctx.send(f'{username} added')
     print('User added:', username)
 
 @bot.command()
 async def removeuser(ctx, username):
-    if username in users:
-        # Signal threads to stop
-        if username in user_stop_events:
-            user_stop_events[username].set()
+    with thread_lock:
+        if username in users:
+            # Signal threads to stop
+            if username in user_stop_events:
+                user_stop_events[username].set()
 
-        del users[username]
+            del users[username]
 
-        if username in live_status:
-            del live_status[username]
+            if username in live_status:
+                del live_status[username]
+            if username in user_threads:
+                del user_threads[username]
+            if username in user_stop_events:
+                del user_stop_events[username]
 
-        with open('users.txt','w') as q:
-            q.write(str(users))
+            with open('users.txt','w') as q:
+                q.write(str(users))
 
-        await ctx.send(f'{username} removed')
-    else:
-        await ctx.send(f'{username} not found')
+            await ctx.send(f'{username} removed')
+        else:
+            await ctx.send(f'{username} not found')
 
 @bot.command()
 async def listusers(ctx):
@@ -178,7 +187,7 @@ async def listusers(ctx):
     for x in enumerate():
         if '-checklive' in x.name:
             username = x.name.removesuffix("-checklive")
-            price += f'{username}: {"Live :red_circle:" if live_status[username] == True else "Offline"}\n'
+            price += f'{username}: {"Live :red_circle:" if live_status.get(username) else "Offline"}\n'
         
     embed = discord.Embed(title="Users being Checked:")
     embed.description = price if price else "No users being checked."
@@ -209,34 +218,32 @@ async def listthreads(ctx):
 def thread_monitor():
     while True:
         sleep(10)
-        for username in list(users.keys()):
-            # Check if threads exist and are alive
-            threads = user_threads.get(username, [])
-            need_restart = False
-            if len(threads) != 2:
-                need_restart = True
-            else:
-                for t in threads:
-                    if not t.is_alive():
-                        need_restart = True
-                        break
-            if need_restart:
-                fprint(f"[yellow]Restarting threads for {username}")
-                stop_event = user_stop_events.get(username) or Event()
-                user_stop_events[username] = stop_event
-                headers = {
-                    'Authorization': f'Bearer {get_token()}',
-                    'Client-Id': client_id,
-                }
-                t1 = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
-                t2 = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
-                t1.start()
-                t2.start()
-                user_threads[username] = [t1, t2]
+        with thread_lock:
+            for username in list(users.keys()):
+                # Check if threads exist and are alive
+                threads = user_threads.get(username, [])
+                need_restart = False
+                if len(threads) != 2:
+                    need_restart = True
+                else:
+                    for t in threads:
+                        if not t.is_alive():
+                            need_restart = True
+                            break
+                if need_restart:
+                    fprint(f"[yellow]Restarting threads for {username}")
+                    stop_event = user_stop_events.get(username) or Event()
+                    user_stop_events[username] = stop_event
+                    headers = {
+                        'Authorization': f'Bearer {get_token()}',
+                        'Client-Id': client_id,
+                    }
+                    t1 = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
+                    t2 = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
+                    t1.start()
+                    t2.start()
+                    user_threads[username] = [t1, t2]
          # Check every 10 seconds
-
-
-
 
 # Start the monitor thread
 monitor_thread = threading.Thread(target=thread_monitor, name="ThreadMonitor", daemon=True)
@@ -249,14 +256,15 @@ if __name__ == "__main__":
         'Client-Id': client_id,
     }
 
-    for x in users:
-        stop_event = Event()
-        user_stop_events[x] = stop_event
-        t1 = Thread(target=get_user_info, args=(headers, x, stop_event), name=f"{x}-userinfo")
-        t2 = Thread(target=check_live, args=(headers, x, stop_event), name=f"{x}-checklive")
-        t1.start()
-        t2.start()
-        user_threads[x] = [t1, t2]
-        live_status[x] = False
+    with thread_lock:
+        for x in users:
+            stop_event = Event()
+            user_stop_events[x] = stop_event
+            t1 = Thread(target=get_user_info, args=(headers, x, stop_event), name=f"{x}-userinfo")
+            t2 = Thread(target=check_live, args=(headers, x, stop_event), name=f"{x}-checklive")
+            t1.start()
+            t2.start()
+            user_threads[x] = [t1, t2]
+            live_status[x] = False
     if not debug:
         bot.run(token=dcbot_token)
