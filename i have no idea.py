@@ -188,6 +188,24 @@ async def listusers(ctx):
     await ctx.send(embed=embed)
     #await ctx.send(f'Users:\n{price}')
 
+@bot.command()
+async def listthreads(ctx):
+    threads_info = []
+    for t in enumerate():
+        if '-checklive' in t.name or '-userinfo' in t.name:
+            status = "Alive" if t.is_alive() else "Dead"
+            threads_info.append(f"{t.name}: {status}")
+    
+    if not threads_info:
+        threads_info.append("No active threads found.")
+
+    embed = discord.Embed(title="Active Threads")
+    embed.description = "\n".join(threads_info)
+    embed.color = discord.Color.from_str("#884dc6")
+
+    embed.set_author(name="Twitch Check Bot")
+    await ctx.send(embed=embed)
+
 def thread_monitor():
     while True:
         sleep(10)
@@ -216,6 +234,9 @@ def thread_monitor():
                 t2.start()
                 user_threads[username] = [t1, t2]
          # Check every 10 seconds
+
+
+
 
 # Start the monitor thread
 monitor_thread = threading.Thread(target=thread_monitor, name="ThreadMonitor", daemon=True)
