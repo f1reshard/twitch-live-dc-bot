@@ -220,19 +220,19 @@ def thread_monitor():
         sleep(10)
         with thread_lock:
             for username in list(users.keys()):
-                # Check if threads exist and are alive
                 threads = user_threads.get(username, [])
-                need_restart = False
-                if len(threads) != 2:
-                    need_restart = True
-                else:
-                    for t in threads:
-                        if not t.is_alive():
-                            need_restart = True
-                            break
-                if need_restart:
+                # If any thread is dead or missing, restart both
+                if len(threads) != 2 or any(not t.is_alive() for t in threads):
                     fprint(f"[yellow]Restarting threads for {username}")
-                    stop_event = user_stop_events.get(username) or Event()
+                    # Signal old threads to stop
+                    if username in user_stop_events:
+                        user_stop_events[username].set()
+                    # Optionally join old threads (not strictly required)
+                    for t in threads:
+                        if t.is_alive():
+                            t.join(timeout=1)
+                    # Create new stop event and threads
+                    stop_event = Event()
                     user_stop_events[username] = stop_event
                     headers = {
                         'Authorization': f'Bearer {get_token()}',
