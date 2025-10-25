@@ -9,6 +9,8 @@ import os
 from dotenv import load_dotenv
 from ast import literal_eval
 import threading
+from requests.exceptions import RequestException
+
 
 load_dotenv(dotenv_path='twitch_clients.env')
 debug = False
@@ -69,18 +71,21 @@ def get_user_info(headers, livename, stop_event=None):
 
 def get_live_info(headers, livename):
     global token
+    try:
+        response = requests.get(f'https://api.twitch.tv/helix/streams?user_login={livename}', headers=headers)
+        if response.status_code in [200, 201]:
+            return response
 
-    response = requests.get(f'https://api.twitch.tv/helix/streams?user_login={livename}', headers=headers)
-    if response.status_code in [200, 201]:
-        return response
+        elif response.status_code == 401:
+            token = get_token()
+            headers['Authorization'] = f'Bearer {token}'
+            return get_live_info(headers, livename)
+        else:
+            fprint(f'Error {response.status_code}')
+            return None
+    except RequestException as e:
+        fprint(f'Error in get_live_info: {e}')
     
-    elif response.status_code == 401:
-        token = get_token()
-        headers['Authorization'] = f'Bearer {token}'
-        return get_live_info(headers, livename)
-    else:
-        fprint(f'Error {response.status_code}')
-        return None
 
 def send_discord_embed(livename, islive):
     while livename not in userinfo:
@@ -108,7 +113,7 @@ def check_live(headers, livename, stop_event=None):
                 )
                 webhook.execute()
                 break
-
+                
             response = get_live_info(headers, livename)
             is_live = False
 
@@ -201,7 +206,7 @@ async def listusers(ctx):
 async def listthreads(ctx):
     threads_info = []
     for t in enumerate():
-        if '-checklive' in t.name or '-userinfo' in t.name:
+        if '-checklive' in t.name or '-userinfo' in t.name or 1 == 1:
             status = "Alive" if t.is_alive() else "Dead"
             threads_info.append(f"{t.name}: {status}")
     
