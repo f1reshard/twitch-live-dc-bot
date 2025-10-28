@@ -203,6 +203,10 @@ def stream_title(livename, headers):
             fprint('[red]Rate limited when fetching stream title')
             sleep(1)
             return stream_title(livename, headers)
+        
+        else:
+            fprint(f'Error {response.status_code} in stream_title')
+            return 'error'
 
     except Exception as e:
         fprint(f'Error in stream_title: {e}')
