@@ -194,7 +194,6 @@ def stream_title(livename, headers):
         if response.status_code in [200, 201]:
             usertitle = response.json()['data'][0]['title']
             return usertitle
-
         elif response.status_code == 401:
             token = get_token()
             headers['Authorization'] = f'Bearer {token}'
@@ -203,6 +202,7 @@ def stream_title(livename, headers):
         elif response.status_code == 429:
             fprint('[red]Rate limited when fetching stream title')
             sleep(1)
+            return stream_title(livename, headers)
 
     except Exception as e:
         fprint(f'Error in stream_title: {e}')
