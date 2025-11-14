@@ -58,22 +58,23 @@ def get_user_info(headers, livename, stop_event=None, skip_sleep=False):
         if stop_event and stop_event.is_set():
             fprint(f'Stopping user info thread for {livename}')
             break
+        try:
+            response = requests.get(f'https://api.twitch.tv/helix/users?login={livename}', headers=headers)
+            if response.status_code in [200, 201]:
+                userinfo[livename] = response.json()['data'][0]
+                if not debug and skip_sleep == False:
+                    sleep(1800)
+                if skip_sleep:
+                    break
     
-        response = requests.get(f'https://api.twitch.tv/helix/users?login={livename}', headers=headers)
-        if response.status_code in [200, 201]:
-            userinfo[livename] = response.json()['data'][0]
-            if not debug and skip_sleep == False:
-                sleep(1800)
-            if skip_sleep:
-                break
-
-        elif response.status_code == 401:
-            token = get_token()
-            headers['Authorization'] = f'Bearer {token}'
-            continue
-        else:
-            fprint(f'Error {response.status_code}')
-
+            elif response.status_code == 401:
+                token = get_token()
+                headers['Authorization'] = f'Bearer {token}'
+                continue
+            else:
+                fprint(f'Error {response.status_code}')
+        except Exception as eotto:
+            print(f"error in get_user_info thread {eotto}")
 def get_live_info(headers, livename, apicall):
     global token
     try:
