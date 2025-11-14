@@ -63,7 +63,11 @@ def get_user_info(headers, livename, stop_event=None, skip_sleep=False):
             if response.status_code in [200, 201]:
                 userinfo[livename] = response.json()['data'][0]
                 if not debug and skip_sleep == False:
-                    sleep(1800)
+                    for _ in range(1800):
+                        if stop_event and stop_event.is_set():
+                            break 
+                        else:
+                            sleep(1)
                 if skip_sleep:
                     break
     
@@ -299,6 +303,35 @@ async def listthreads(ctx):
 
     embed.set_author(name="Twitch Check Bot")
     await ctx.send(embed=embed)
+
+@bot.command()
+async def fullreset(ctx):
+    print('Killing and restarting every thread...')
+    await ctx.send('Killing and restarting every thread...')
+    with thread_lock:
+        for username in list(users.keys()):
+
+            if username in user_stop_events:
+                user_stop_events[username].set()
+
+            threads = user_threads.get(username, [])
+            for t in threads:
+                if t.is_alive():
+                    t.join(timeout=1)
+            stop_event = Event()
+            user_stop_events[username] = stop_event
+            headers = {
+                'Authorization': f'Bearer {get_token()}',
+                'Client-Id': client_id,
+            }
+            t1 = Thread(target=get_user_info, args=(headers, username, stop_event), name=f"{username}-userinfo")
+            t2 = Thread(target=check_live, args=(headers, username, stop_event), name=f"{username}-checklive")
+            t1.start()
+            t2.start()
+            user_threads[username] = [t1, t2]    
+    await ctx.send('all threads restarted hopefully')
+
+
 
 def thread_monitor():
     while True:
