@@ -1,3 +1,4 @@
+import json
 import requests
 from rich import print as fprint
 from discord_webhook import DiscordWebhook
@@ -7,11 +8,9 @@ from threading import Thread, Event, enumerate
 from time import sleep
 import os
 from dotenv import load_dotenv
-from ast import literal_eval
 import threading
 from requests.exceptions import RequestException
 from datetime import datetime
-from discord import Embed
 
 
 load_dotenv(dotenv_path='twitch_clients.env')
@@ -21,8 +20,8 @@ client_secret = os.getenv('client_secret') # twitch bot
 dcbot_token = os.getenv('dcbot_token')
 userinfo = {}
 
-with open('users.txt','r') as q:
-    users = literal_eval(q.read())
+with open('users.json','r') as q:
+    users = json.load(q)
 
 # Track threads and stop events per user
 user_threads = {}
@@ -52,16 +51,16 @@ def get_token():
     response = requests.post(url, params=params)
     return response.json()['access_token']
 
-def get_user_info(headers, livename, stop_event=None, skip_sleep=False):
-    global userinfo, token
+def get_user_info(headers, skip_sleep=False):
+    global userinfo, token, users
     while True:
-        if stop_event and stop_event.is_set():
-            fprint(f'Stopping user info thread for {livename}')
-            break
         try:
+
             response = requests.get(f'https://api.twitch.tv/helix/users?login={livename}', headers=headers)
+
             if response.status_code in [200, 201]:
-                userinfo[livename] = response.json()['data'][0]
+                for livename in users:
+                    userinfo[livename] = response.json()['data'][0]
                 if not debug and skip_sleep == False:
                     sleep(1800)
                 if skip_sleep:
@@ -71,8 +70,13 @@ def get_user_info(headers, livename, stop_event=None, skip_sleep=False):
                 token = get_token()
                 headers['Authorization'] = f'Bearer {token}'
                 continue
+
+            elif response.status_code == 400: # The Lyreins Protocol (bad request, likely livename)
+                print('a')
+
             else:
                 fprint(f'Error {response.status_code}')
+                sleep(5)
         except Exception as eotto:
             print(f"error in get_user_info thread {eotto}")
 def get_live_info(headers, livename, apicall):
@@ -341,16 +345,21 @@ if __name__ == "__main__":
         'Client-Id': client_id,
     }
 
-    with thread_lock:
-        for x in users:
-            stop_event = Event()
-            user_stop_events[x] = stop_event
-            t1 = Thread(target=get_user_info, args=(headers, x, stop_event), name=f"{x}-userinfo")
-            t2 = Thread(target=check_live, args=(headers, x, stop_event), name=f"{x}-checklive")
-            t1.start()
-            t2.start()
-            user_threads[x] = [t1, t2]
-            live_status[x] = False
-            current_titles[x] = stream_title(x, headers)
+    userthread = Thread(target=get_user_info, args=(headers, users[0]), name=f"{users[0]}-userinfo")
+    livethread = Thread(target=check_live, args=(headers, users[0]), name=f"{users[0]}-checklive")
+
+    userthread.start()
+    livethread.start()
+    # with thread_lock:
+    #     for x in users:
+    #         stop_event = Event()
+    #         user_stop_events[x] = stop_event
+    #         t1 = Thread(target=get_user_info, args=(headers, x, stop_event), name=f"{x}-userinfo")
+    #         t2 = Thread(target=check_live, args=(headers, x, stop_event), name=f"{x}-checklive")
+    #         t1.start()
+    #         t2.start()
+    #         user_threads[x] = [t1, t2]
+    #         live_status[x] = False
+    #         current_titles[x] = stream_title(x, headers)
     if not debug:
         bot.run(token=dcbot_token)
