@@ -205,15 +205,16 @@ def get_user_info():
     
     while True:
         try:
-            url = f'https://api.twitch.tv/helix/users?login={"&broadcaster_id=".join(users.keys())}'
+            url = f'https://api.twitch.tv/helix/users?login={"&id=".join(users.keys())}'
             response = requests.get(url, headers=headers)
 
 
             if response.status_code in [200,201]:
                 fprint('got user info')
-
+                print(response.json())
                 for x in response.json()['data']:
                     user_id = x['id']
+                    print (x['display_name'])
                     users[user_id]['username'] = x['display_name'] # the display name, a.k.a. the username of the person with captitalization. Used for messages, lists, etc. Used often enough to warrant a variable outside of userinfo.
                     users[user_id]['userinfo'] = x # All of the info about the user. Relevant stuff is pfps and some other smaller stuff for future use.
 
@@ -312,6 +313,8 @@ async def listusers(ctx):
 
 # -- INIT --
 
+
+
 if __name__ == "__main__":
     # Gets the token and defines the overall API header.
     token = get_token()
@@ -319,7 +322,6 @@ if __name__ == "__main__":
         'Authorization': f'Bearer {token}',
         'Client-Id': client_id,
     }
-
     # Define and start the 3 threads
     Thread(target=get_live_status).start()
     Thread(target=get_title).start()
