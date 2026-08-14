@@ -87,7 +87,7 @@ def send_discord_embed(userid, islive, category): # Technically not an embed, na
                 horse = f"<@257631706687864833> {livename} is [live!](https://twitch.tv/{livename})"
                 webhooktwo = DiscordWebhook(
                 url=os.getenv('webhook_url_tiyo'),
-                content=content
+                content=horse
                 )
                 webhooktwo.execute()
 
