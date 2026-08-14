@@ -72,7 +72,7 @@ def error_handling(response, ctx=None):
                 fprint('An unexpected error occurred. Please try again later.')
                 fprint(f'error {response.status_code} in adduser: {response.text}')
             eepy(3)
-def send_discord_embed(userid, islive): # Technically not an embed, name is for legacy purpose. Just a webhook message.
+def send_discord_embed(userid, islive, category): # Technically not an embed, name is for legacy purpose. Just a webhook message.
     # Userid - the ID of the user which is live/offline.
     # islive - If the live or not live message should be sent.
 
@@ -81,6 +81,17 @@ def send_discord_embed(userid, islive): # Technically not an embed, name is for 
     match islive:
         case True:
             content = f"<@267440142124449794> {livename} is [live!](https://twitch.tv/{livename})"
+
+            # BULLSHIT TIYO EXCEPTION pls dont break
+            if livename.lower() == 'priidikbutslow' and category == '513181':
+                horse = f"<@257631706687864833> {livename} is [live!](https://twitch.tv/{livename})"
+                webhooktwo = DiscordWebhook(
+                url=os.getenv('webhook_url_tiyo'),
+                content=content
+                )
+                webhooktwo.execute()
+
+
         case False:
             content = f"{livename} is now offline..."
 
@@ -103,11 +114,13 @@ def get_live_status():
                 for x in users:
                 # Checks Live
                     peepo = False
+                    category = False
 
                     # Checks if user x is one of the responses from the API call, and is therefore live.
                     for y in response.json()['data']:
                         if x == y['user_id']:
                             peepo = True
+                            category = y['game_id']
                             break
 
                     match peepo:
@@ -115,7 +128,7 @@ def get_live_status():
                             fprint(f"{users[x]['username']} [spring_green4]liv[/spring_green4]")
 
                             if not users[x]['live_status']: # If the user was previously offline, send a notification and update file.
-                                send_discord_embed(x, True)
+                                send_discord_embed(x, True, category)
                                 users[x]['live_status'] = True
                                 with open('users.json','w') as q:
                                     json.dump(users, q, indent=4)
