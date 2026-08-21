@@ -183,7 +183,7 @@
             "view_count": 0,
             "created_at": "2021-04-25T23:32:25Z"
         },
-        "live_status": true,
+        "live_status": false,
         "title": "genshin"
     },
     "144676803": {
@@ -236,5 +236,22 @@
         },
         "live_status": false,
         "title": "fukit we ball"
+    },
+    "1159021306": {
+        "username": "PriidikButSlow",
+        "userinfo": {
+            "id": "1159021306",
+            "login": "priidikbutslow",
+            "display_name": "PriidikButSlow",
+            "type": "",
+            "broadcaster_type": "",
+            "description": "2nd channel for when I don't wanna stream on main",
+            "profile_image_url": "https://static-cdn.jtvnw.net/jtv_user_pictures/0d602885-bc83-46db-bace-3a1d4fe86fe9-profile_image-300x300.png",
+            "offline_image_url": "",
+            "view_count": 0,
+            "created_at": "2024-10-10T16:44:40Z"
+        },
+        "live_status": true,
+        "title": "Genshin Impact for Some Reason"
     }
 }

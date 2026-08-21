@@ -72,7 +72,7 @@ def error_handling(response, ctx=None):
                 fprint('An unexpected error occurred. Please try again later.')
                 fprint(f'error {response.status_code} in adduser: {response.text}')
             eepy(3)
-def send_discord_embed(userid, islive, category): # Technically not an embed, name is for legacy purpose. Just a webhook message.
+def send_discord_embed(userid, islive, category='0'): # Technically not an embed, name is for legacy purpose. Just a webhook message.
     # Userid - the ID of the user which is live/offline.
     # islive - If the live or not live message should be sent.
 
@@ -87,7 +87,7 @@ def send_discord_embed(userid, islive, category): # Technically not an embed, na
                 horse = f"<@257631706687864833> {livename} is [live!](https://twitch.tv/{livename})"
                 webhooktwo = DiscordWebhook(
                 url=os.getenv('webhook_url_tiyo'),
-                content=content
+                content=horse
                 )
                 webhooktwo.execute()
 
