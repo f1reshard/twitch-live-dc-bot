@@ -83,7 +83,7 @@ def send_discord_embed(userid, islive, category='0'): # Technically not an embed
             content = f"<@267440142124449794> {livename} is [live!](https://twitch.tv/{livename})"
 
             # BULLSHIT TIYO EXCEPTION pls dont break
-            if livename.lower() == 'priidikbutslow' and category == '513181':
+            if livename.lower() in ['priidikbutslow','priidik'] and category == '513181':
                 horse = f"<@257631706687864833> {livename} is [live!](https://twitch.tv/{livename})"
                 webhooktwo = DiscordWebhook(
                 url=os.getenv('webhook_url_tiyo'),
